@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Malla Mecatrónica EIA</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f7fb;
+      padding: 20px;
+      margin: 0;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .grid {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 20px;
+      margin-top: 30px;
+    }
+    .semestre {
+      min-width: 240px;
+      background: #fff;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    .semestre h2 {
+      text-align: center;
+      font-size: 1rem;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    .materia {
+      background: #e2ecf7;
+      margin: 6px 0;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.2s;
+      position: relative;
+    }
+    .materia.aprobada {
+      background: #c8f7c5;
+      text-decoration: line-through;
+      color: #444;
+    }
+    .materia.bloqueada {
+      background: #f0f0f0;
+      color: #aaa;
+      cursor: not-allowed;
+    }
+    .materia:hover {
+      background: #d2e2ff;
+    }
+    .materia.bloqueada:hover {
+      background: #f0f0f0;
+    }
+    .tooltip {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 100%;
+      margin-left: 8px;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 5px 10px;
+      font-size: 0.75em;
+      border-radius: 4px;
+      max-width: 180px;
+      z-index: 10;
+    }
+    .materia.bloqueada:hover .tooltip {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>Malla Curricular - Ingeniería Mecatrónica (EIA)</h1>
+  <div class="grid" id="malla"></div>
+
+  <script>
+    const courses = [
+      // 🔽 Aquí van las materias (semestre, nombre, prerrequisitos)
+      { name: "Universo Mecatrónico", semester: "Semestre 1", prerequisites: [] },
+      { name: "Sistemas Neumáticos e H. Biomorfismos", semester: "Semestre 1", prerequisites: [] },
+      { name: "Programación", semester: "Semestre 1", prerequisites: [] },
+      { name: "Optativa en Comunicación", semester: "Semestre 1", prerequisites: [] },
+      { name: "Geometría", semester: "Semestre 1", prerequisites: [] },
+      { name: "Cálculo Diferencial", semester: "Semestre 1", prerequisites: [] },
+      { name: "Proyecto I", semester: "Semestre 2", prerequisites: ["Universo Mecatrónico"] },
+      { name: "Dibujo Mecánico", semester: "Semestre 2", prerequisites: ["Geometría"] },
+      { name: "Programación y Software", semester: "Semestre 2", prerequisites: ["Programación"] },
+      { name: "Bases de Datos", semester: "Semestre 2", prerequisites: ["Programación"] },
+      { name: "Física Mecánica", semester: "Semestre 2", prerequisites: ["Cálculo Diferencial", "Geometría"] },
+      { name: "Álgebra Lineal", semester: "Semestre 2", prerequisites: ["Cálculo Diferencial"] },
+      { name: "Cálculo Integral", semester: "Semestre 2", prerequisites: ["Cálculo Diferencial"] },
+      { name: "Ciencia de los Materiales", semester: "Semestre 3", prerequisites: ["Sistemas Neumáticos e H. Biomorfismos"] },
+      { name: "Termodinámica y Fluidos", semester: "Semestre 3", prerequisites: ["Física Mecánica"] },
+      { name: "Optativa Sociohumanística", semester: "Semestre 3", prerequisites: [] },
+      { name: "Estática", semester: "Semestre 3", prerequisites: ["Física Mecánica"] },
+      { name: "Física de Campos", semester: "Semestre 3", prerequisites: ["Física Mecánica", "Cálculo Integral"] },
+      { name: "Cálculo en Varias Variables", semester: "Semestre 3", prerequisites: ["Cálculo Integral"] },
+      // Puedes seguir agregando más materias así...
+    ];
+
+    const estado = JSON.parse(localStorage.getItem("estadoMaterias")) || {};
+
+    function renderMalla() {
+      const container = document.getElementById("malla");
+      container.innerHTML = "";
+
+      const semestres = [...new Set(courses.map(c => c.semester))];
+      semestres.forEach(sem => {
+        const columna = document.createElement("div");
+        columna.className = "semestre";
+        const titulo = document.createElement("h2");
+        titulo.textContent = sem;
+        columna.appendChild(titulo);
+
+        courses.filter(c => c.semester === sem).forEach(materia => {
+          const div = document.createElement("div");
+          div.className = "materia";
+          div.textContent = materia.name;
+
+          const aprobadas = Object.keys(estado).filter(k => estado[k]);
+
+          const faltan = materia.prerequisites.filter(p => !estado[p]);
+          if (estado[materia.name]) {
+            div.classList.add("aprobada");
+          } else if (faltan.length > 0) {
+            div.classList.add("bloqueada");
+            const tooltip = document.createElement("div");
+            tooltip.className = "tooltip";
+            tooltip.textContent = "Faltan: " + faltan.join(", ");
+            div.appendChild(tooltip);
+          }
+
+          div.addEventListener("click", () => {
+            if (div.classList.contains("bloqueada")) return;
+            estado[materia.name] = !estado[materia.name];
+            localStorage.setItem("estadoMaterias", JSON.stringify(estado));
+            renderMalla();
+          });
+
+          columna.appendChild(div);
+        });
+
+        container.appendChild(columna);
+      });
+    }
+
+    renderMalla();
+  </script>
+</body>
+</html>
+
+
