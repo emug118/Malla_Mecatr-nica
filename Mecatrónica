@@ -158,108 +158,128 @@
 
       // Semestre 8
       { name: "IA en Sistemas Mecatrónicos", semester: "Semestre 8", prerequisites: ["Control Digital de Sistemas Dinámicos"] },
-      { name: "Diseño Mecatrónico", semester: "Semestre 8", prerequisites: ["Robótica"] },
-      { name: "Innovación Empresarial", semester: "Semestre 8", prerequisites: ["Reto de Empresarismo", "Formulación y Evaluación de Proyectos"] },
+      { name: "Proyecto II", semester: "Semestre 8", prerequisites: ["Reto de Empresarismo", "Formulación y Evaluación de Proyectos"] },
+      { name: "Tópicos Avanzados", semester: "Semestre 8", prerequisites: [] },
+      { name: "Optativa en Responsabilidad Social", semester: "Semestre 8", prerequisites: [] },
       { name: "Electiva III", semester: "Semestre 8", prerequisites: [] },
-      { name: "Electiva IV", semester: "Semestre 8", prerequisites: [] },
-      { name: "Competencias Ciudadanas", semester: "Semestre 8", prerequisites: ["50% créditos aprobados"] },
 
       // Semestre 9
-      { name: "Electiva V", semester: "Semestre 9", prerequisites: [] },
-      { name: "Práctica Empresarial", semester: "Semestre 9", prerequisites: ["65% créditos aprobados"] },
-      { name: "Innovación y Emprendimiento", semester: "Semestre 9", prerequisites: ["65% créditos aprobados"] },
-      { name: "Investigación", semester: "Semestre 9", prerequisites: ["65% créditos aprobados"] },
-      { name: "Intercambio Nacional/Internacional", semester: "Semestre 9", prerequisites: ["65% créditos aprobados"] },
-      { name: "Co-terminal con Posgrado", semester: "Semestre 9", prerequisites: ["65% créditos aprobados"] }
+      { name: "Seminario de Grado", semester: "Semestre 9", prerequisites: ["Proyecto II"] },
+      { name: "Práctica Profesional", semester: "Semestre 9", prerequisites: ["Seminario de Grado"] },
+      { name: "Trabajo de Grado", semester: "Semestre 9", prerequisites: ["Práctica Profesional"] },
+      { name: "Optativa de Libre Elección", semester: "Semestre 9", prerequisites: [] },
     ];
 
-    // Estado guardado en localStorage (materias aprobadas)
-    let estado = JSON.parse(localStorage.getItem("estadoMaterias")) || {};
+    // Crear semestres únicos ordenados
+    const semesters = [...new Set(courses.map(c => c.semester))].sort((a,b) => {
+      const n1 = parseInt(a.match(/\d+/)[0]);
+      const n2 = parseInt(b.match(/\d+/)[0]);
+      return n1 - n2;
+    });
 
-    // Función para contar créditos aprobados
-    // Como no tenemos créditos definidos, solo contamos materias aprobadas
-    function porcentajeAprobado() {
-      const total = courses.length;
-      const aprobadas = Object.values(estado).filter(v => v).length;
-      return (aprobadas / total) * 100;
+    const mallaDiv = document.getElementById("malla");
+
+    // Estado de materias aprobadas para demo (vacío o puedes prellenar)
+    let approved = new Set();
+
+    // Función para verificar si prerrequisitos están aprobados
+    function canTake(course) {
+      if (course.prerequisites.length === 0) return true;
+
+      // Caso especial "50% créditos aprobados" o "40% créditos aprobados" lo dejamos libre
+      if (course.prerequisites.some(p => p.includes('créditos aprobados'))) return true;
+
+      return course.prerequisites.every(pr => approved.has(pr));
     }
 
-    // Verifica si se cumple el requisito especial por porcentaje
-    function checkEspecial(prer) {
-      if(prer === "50% créditos aprobados") {
-        return porcentajeAprobado() >= 50;
-      }
-      if(prer === "40% créditos aprobados") {
-        return porcentajeAprobado() >= 40;
-      }
-      if(prer === "65% créditos aprobados") {
-        return porcentajeAprobado() >= 65;
-      }
-      return false;
-    }
+    // Crear visualización
+    semesters.forEach(sem => {
+      const semDiv = document.createElement("div");
+      semDiv.classList.add("semestre");
+      semDiv.innerHTML = `<h2>${sem}</h2>`;
 
-    function renderMalla() {
-      const container = document.getElementById("malla");
-      container.innerHTML = "";
+      courses.filter(c => c.semester === sem).forEach(course => {
+        const div = document.createElement("div");
+        div.classList.add("materia");
+        div.textContent = course.name;
 
-      // Semestres ordenados
-      const semestres = [...new Set(courses.map(c => c.semester))];
+        if (approved.has(course.name)) {
+          div.classList.add("aprobada");
+        } else if (!canTake(course)) {
+          div.classList.add("bloqueada");
+          // Tooltip con prerrequisitos
+          const tooltip = document.createElement("span");
+          tooltip.classList.add("tooltip");
+          tooltip.textContent = "Prerrequisitos: " + course.prerequisites.join(", ");
+          div.appendChild(tooltip);
+        }
 
-      semestres.forEach(sem => {
-        const col = document.createElement("div");
-        col.className = "semestre";
-
-        const title = document.createElement("h2");
-        title.textContent = sem;
-        col.appendChild(title);
-
-        const materiasSem = courses.filter(c => c.semester === sem);
-
-        materiasSem.forEach(materia => {
-          const div = document.createElement("div");
-          div.className = "materia";
-          div.textContent = materia.name;
-
-          // Revisa si los prerrequisitos están aprobados
-          let faltan = [];
-
-          materia.prerequisites.forEach(p => {
-            // prer especial porcentaje
-            if(p.endsWith("créditos aprobados")) {
-              if(!checkEspecial(p)) faltan.push(p);
+        // Click para marcar como aprobado / desmarcar (solo si no bloqueado)
+        if (!div.classList.contains("bloqueada")) {
+          div.addEventListener("click", () => {
+            if (div.classList.contains("aprobada")) {
+              approved.delete(course.name);
+              div.classList.remove("aprobada");
             } else {
-              if(!estado[p]) faltan.push(p);
+              approved.add(course.name);
+              div.classList.add("aprobada");
             }
+            render(); // actualizar estado y visual
           });
+        }
 
-          if(estado[materia.name]) {
+        semDiv.appendChild(div);
+      });
+
+      mallaDiv.appendChild(semDiv);
+    });
+
+    function render() {
+      // Limpia y vuelve a pintar con estado actualizado
+      mallaDiv.innerHTML = "";
+      semesters.forEach(sem => {
+        const semDiv = document.createElement("div");
+        semDiv.classList.add("semestre");
+        semDiv.innerHTML = `<h2>${sem}</h2>`;
+
+        courses.filter(c => c.semester === sem).forEach(course => {
+          const div = document.createElement("div");
+          div.classList.add("materia");
+          div.textContent = course.name;
+
+          if (approved.has(course.name)) {
             div.classList.add("aprobada");
-          } else if(faltan.length > 0) {
+          } else if (!canTake(course)) {
             div.classList.add("bloqueada");
-            const tooltip = document.createElement("div");
-            tooltip.className = "tooltip";
-            tooltip.textContent = "Faltan: " + faltan.join(", ");
+            const tooltip = document.createElement("span");
+            tooltip.classList.add("tooltip");
+            tooltip.textContent = "Prerrequisitos: " + course.prerequisites.join(", ");
             div.appendChild(tooltip);
           }
 
-          div.addEventListener("click", () => {
-            if(div.classList.contains("bloqueada")) return;
-            estado[materia.name] = !estado[materia.name];
-            localStorage.setItem("estadoMaterias", JSON.stringify(estado));
-            renderMalla();
-          });
+          if (!div.classList.contains("bloqueada")) {
+            div.addEventListener("click", () => {
+              if (div.classList.contains("aprobada")) {
+                approved.delete(course.name);
+                div.classList.remove("aprobada");
+              } else {
+                approved.add(course.name);
+                div.classList.add("aprobada");
+              }
+              render();
+            });
+          }
 
-          col.appendChild(div);
+          semDiv.appendChild(div);
         });
 
-        container.appendChild(col);
+        mallaDiv.appendChild(semDiv);
       });
     }
-
-    renderMalla();
   </script>
 </body>
 </html>
+
 
 
 
